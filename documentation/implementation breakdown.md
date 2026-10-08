@@ -39,3 +39,43 @@ Every class in this project lives in a single flat package: co.wethinkcode.logis
 
 
 🔗 Architecture & Integration MapServicePortPrimary ResponsibilityREST Endpoint ExposedCall Dependenciesingestion-service7050Cleans CSV exportGET /hubsNonehub-service7051Source of truth for hubsGET /hubs/{hubId}GET http://localhost:7050/hubsdelay-stage-service7052Tracks delay stages ($0$–$8$)POST /delay-stage/{hubId}GET /delay-stage/{hubId}Publishes to package-status-topictransit-service7053Calculates arrival ETAGET /eta/{hubId}Calls :7051/hubs/{hubId}Subscribes to package-status-topicalertbot7054Social alert simulationNoneSubscribes to package-status-topic
+
+
+
+
+
+🧪 Testing & Execution Cheat Sheet
+1. Build All Modules
+   Bash
+   find . -name pom.xml -execdir mvn -q package \;
+2. Start Services (In separate terminal tabs)
+   Bash
+# Terminal 1 - Broker
+cd common && docker compose up -d
+
+# Terminal 2 - Ingestion
+cd ingestion-service && java -jar target/ingestion-service.jar
+
+# Terminal 3 - Hub
+cd hub-service && java -jar target/hub-service.jar
+
+# Terminal 4 - Delay Stage
+cd delay-stage-service && java -jar target/delay-stage-service.jar
+
+# Terminal 5 - Transit
+cd transit-service && java -jar target/transit-service.jar
+
+# Terminal 6 - AlertBot (Optional)
+cd alertbot && java -jar target/alertbot.jar
+3. Verify System Flow
+   Bash
+# Check service health
+curl http://localhost:7050/health
+
+# Trigger stage change (Delay Stage Service publishes to MQ)
+curl -X POST http://localhost:7052/delay-stage/H-501 \
+-H "Content-Type: application/json" \
+-d '{"stage": 5}'
+
+# Fetch calculated ETA from Transit Service
+curl http://localhost:7053/eta/H-501
