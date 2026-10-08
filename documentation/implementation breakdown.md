@@ -22,3 +22,14 @@ Every class in this project lives in a single flat package: co.wethinkcode.logis
 
 
 2.Stage 2: Wire Up Synchronous REST Services:Ports 7051, 7052, 7053 • ~1.5 to 2 hours.ObjectiveExpose domain endpoints for hub-service, delay-stage-service, and transit-service, then connect them via direct HTTP calls.Action StepsHub Service (hub-service :7051):Call IngestionServiceApp at startup/request (GET :7050/hubs) to load cleaned place-name data.Expose route: GET /hubs/{hubId} $\rightarrow$ Returns hub/sorting-center details.Delay Stage Service (delay-stage-service :7052):Maintain in-memory transit delay stages ($0$–$8$).Expose route: POST /delay-stage/{hubId} with body {"stage": X} to update a hub's stage.Expose route: GET /delay-stage/{hubId} $\rightarrow$ Returns {"hubId": "...", "stage": X}.Transit Service (transit-service :7053):Expose route: GET /eta/{hubId}.Under the hood, make synchronous HTTP GET requests to:hub-service (:7051/hubs/{hubId}) for location metadata.delay-stage-service (:7052/delay-stage/{hubId}) for current delay stage.Calculate and return the estimated arrival window (ETA).
+
+
+
+
+
+3.Stage 3: Asynchronous Decoupling via ActiveMQ:Shared Broker & Topic package-status-topic • ~1 hour.ObjectiveReplace the synchronous REST call between transit-service and delay-stage-service with event-driven messaging.Action StepsSpin up Broker:Run cd common && docker compose up -d to launch the ActiveMQ broker.Producer (delay-stage-service):On POST /delay-stage/{hubId}, publish a JSON message to package-status-topic using configuration in co.wethinkcode.logisticsconnect.mq.MqConfig.Payload: {"hubId": "H-501", "stage": 5, "timestamp": "2026-07-18T10:15:00Z"}.Consumer (transit-service):Subscribe to package-status-topic.Remove the direct HTTP call to :7052/delay-stage/{hubId}.Maintain local cache/state of hub delay stages updated directly from incoming ActiveMQ messages.
+
+
+
+
+
