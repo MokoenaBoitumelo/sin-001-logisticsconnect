@@ -37,3 +37,5 @@ Every class in this project lives in a single flat package: co.wethinkcode.logis
 
 
 
+
+🔗 Architecture & Integration MapServicePortPrimary ResponsibilityREST Endpoint ExposedCall Dependenciesingestion-service7050Cleans CSV exportGET /hubsNonehub-service7051Source of truth for hubsGET /hubs/{hubId}GET http://localhost:7050/hubsdelay-stage-service7052Tracks delay stages ($0$–$8$)POST /delay-stage/{hubId}GET /delay-stage/{hubId}Publishes to package-status-topictransit-service7053Calculates arrival ETAGET /eta/{hubId}Calls :7051/hubs/{hubId}Subscribes to package-status-topicalertbot7054Social alert simulationNoneSubscribes to package-status-topic
