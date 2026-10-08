@@ -33,3 +33,7 @@ Every class in this project lives in a single flat package: co.wethinkcode.logis
 
 
 
+4.Stage 4: AlertBot Notification Service (Stretch Goal):Port 7054 • ~30 to 45 mins.ObjectiveSimulate external delay alerting when severe disruption occurs.Action StepsConsumer Setup (alertbot):Subscribe AlertBotApp to package-status-topic.Threshold Alert Logic:Set a delay stage threshold (e.g., stage $\ge 5$).When a message exceeds this threshold, print/log a simulated social media broadcast (e.g., "ALERT: Hub H-501 experiencing severe delay (Stage 5)").
+
+
+
