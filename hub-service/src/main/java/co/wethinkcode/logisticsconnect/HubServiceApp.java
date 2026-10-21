@@ -24,5 +24,21 @@ public class HubServiceApp {
 
         // TODO (Serves provinces and sorting centers (place-name source of truth).)
         // Add domain endpoints for hub-service here.
+        // GET /hubs/{hubId} -> Fetch specific hub details
+        app.get("/hubs/{hubId}", ctx -> {
+            String hubId = ctx.pathParam("hubId").toUpperCase();
+
+            // Refresh/ensure cache has data from ingestion-service
+            if (hubCache.isEmpty()) {
+                fetchHubsFromIngestion();
+            }
+
+            Map<String, Object> hub = hubCache.get(hubId);
+            if (hub != null) {
+                ctx.json(hub);
+            } else {
+                ctx.status(404).result("Hub not found: " + hubId);
+            }
+        });
     }
 }
