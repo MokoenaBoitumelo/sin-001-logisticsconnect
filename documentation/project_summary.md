@@ -60,3 +60,10 @@ Check ETA Result (transit-service):
     
     Bash
     curl http://localhost:7053/eta/H-501
+
+
+## Run All Unit Tests:
+Execute Maven test command across all projects from the root directory:   
+
+   Bash
+   find . -name pom.xml -execdir mvn test \;
