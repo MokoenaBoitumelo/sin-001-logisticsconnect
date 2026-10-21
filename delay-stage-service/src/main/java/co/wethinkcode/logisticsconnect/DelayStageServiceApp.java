@@ -1,8 +1,15 @@
 package co.wethinkcode.logisticsconnect;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.Javalin;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class DelayStageServiceApp {
+
+    private static final Map<String, Integer> delayStages = new ConcurrentHashMap<>();
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public static void main(String[] args) {
         Javalin app = Javalin.create().start(7052);
