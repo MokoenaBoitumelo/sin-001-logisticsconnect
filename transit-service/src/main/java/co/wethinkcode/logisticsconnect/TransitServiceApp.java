@@ -54,6 +54,39 @@ public class TransitServiceApp {
             ctx.json(response);
         });
     }
+
+    private static Map<String, Object> fetchHubDetails(String hubId) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:7051/hubs/" + hubId))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                return objectMapper.readValue(response.body(), new TypeReference<>() {});
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to fetch hub details: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private static int fetchDelayStage(String hubId) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:7052/delay-stage/" + hubId))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                Map<String, Object> map = objectMapper.readValue(response.body(), new TypeReference<>() {});
+                return (int) map.getOrDefault("stage", 0);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to fetch delay stage: " + e.getMessage());
+        }
+        return 0;
+    }
 }
 
 // MQ TODO: subscribes to ActiveMQ topic MqConfig.TOPIC at MqConfig.BROKER_URL (see co.wethinkcode.logisticsconnect.mq.MqConfig)
