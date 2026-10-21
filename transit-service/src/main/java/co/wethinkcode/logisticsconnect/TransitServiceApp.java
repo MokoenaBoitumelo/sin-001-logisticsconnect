@@ -1,46 +1,51 @@
 package co.wethinkcode.logisticsconnect;
 
+import co.wethinkcode.logisticsconnect.mq.MqConfig;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.Javalin;
+import org.apache.activemq.ActiveMQConnectionFactory;
 
+import javax.jms.*;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TransitServiceApp {
 
     private static final HttpClient httpClient = HttpClient.newHttpClient();
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    // Local state maintained asynchronously via ActiveMQ topic subscriptions
+    private static final Map<String, Integer> localDelayStages = new ConcurrentHashMap<>();
+
     public static void main(String[] args) {
+        initMqConsumer();
+
         Javalin app = Javalin.create().start(7053);
 
         app.get("/health", ctx -> ctx.result("OK"));
-
-        // TODO (Calculates estimated arrival windows based on hub and delay stage.)
-        // Add domain endpoints for transit-service here.
 
         // GET /eta/{hubId}
         app.get("/eta/{hubId}", ctx -> {
             String hubId = ctx.pathParam("hubId").toUpperCase();
 
-            // 1. Fetch Hub Details synchronously from Hub Service (:7051)
+            // Fetch Hub Details synchronously from Hub Service (:7051)
             Map<String, Object> hubDetails = fetchHubDetails(hubId);
             if (hubDetails == null) {
                 ctx.status(404).result("Hub details unavailable for: " + hubId);
                 return;
             }
 
-            // 2. Fetch Delay Stage synchronously from Delay Stage Service (:7052)
-            int delayStage = fetchDelayStage(hubId);
+            // Read delay stage directly from our local cache (fed by ActiveMQ topic)
+            int delayStage = localDelayStages.getOrDefault(hubId, 0);
 
-            // 3. Calculate ETA based on base transit hours + delay stage penalty
             int baseHours = 24;
-            int delayHours = delayStage * 6; // Each stage adds 6 hours
+            int delayHours = delayStage * 6;
             int totalEstimatedHours = baseHours + delayHours;
 
             Map<String, Object> response = new LinkedHashMap<>();
@@ -53,6 +58,37 @@ public class TransitServiceApp {
 
             ctx.json(response);
         });
+    }
+
+    private static void initMqConsumer() {
+        try {
+            ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(MqConfig.BROKER_URL);
+            Connection connection = factory.createConnection();
+            connection.start();
+            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+            Topic topic = session.createTopic(MqConfig.TOPIC);
+
+            MessageConsumer consumer = session.createConsumer(topic);
+            consumer.setMessageListener(message -> {
+                if (message instanceof TextMessage textMessage) {
+                    try {
+                        String body = textMessage.getText();
+                        Map<String, Object> data = objectMapper.readValue(body, new TypeReference<>() {});
+                        if (data.containsKey("hubId") && data.containsKey("stage")) {
+                            String hubId = data.get("hubId").toString().toUpperCase();
+                            int stage = Integer.parseInt(data.get("stage").toString());
+                            localDelayStages.put(hubId, stage);
+                            System.out.println("TransitService updated local stage for " + hubId + " -> " + stage);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Error processing ActiveMQ message: " + e.getMessage());
+                    }
+                }
+            });
+            System.out.println("TransitService subscribed to ActiveMQ topic: " + MqConfig.TOPIC);
+        } catch (Exception e) {
+            System.err.println("Failed to initialize ActiveMQ consumer: " + e.getMessage());
+        }
     }
 
     private static Map<String, Object> fetchHubDetails(String hubId) {
@@ -69,23 +105,6 @@ public class TransitServiceApp {
             System.err.println("Failed to fetch hub details: " + e.getMessage());
         }
         return null;
-    }
-
-    private static int fetchDelayStage(String hubId) {
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://localhost:7052/delay-stage/" + hubId))
-                    .GET()
-                    .build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
-                Map<String, Object> map = objectMapper.readValue(response.body(), new TypeReference<>() {});
-                return (int) map.getOrDefault("stage", 0);
-            }
-        } catch (Exception e) {
-            System.err.println("Failed to fetch delay stage: " + e.getMessage());
-        }
-        return 0;
     }
 }
 
