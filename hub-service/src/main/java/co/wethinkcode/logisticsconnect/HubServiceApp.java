@@ -41,4 +41,25 @@ public class HubServiceApp {
             }
         });
     }
+
+    private static void fetchHubsFromIngestion() {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("http://localhost:7050/hubs"))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                var hubsList = objectMapper.readValue(response.body(), new TypeReference<Map<String, Object>[]>() {});
+                for (Map<String, Object> hub : hubsList) {
+                    if (hub.containsKey("hub_id")) {
+                        hubCache.put(((String) hub.get("hub_id")).toUpperCase(), hub);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to fetch hubs from ingestion service: " + e.getMessage());
+        }
+    }
 }
