@@ -71,6 +71,16 @@ public class AlertBotApp {
             System.err.println("AlertBot failed to connect to ActiveMQ broker: " + e.getMessage());
         }
     }
+
+    private static void publishSimulatedSocialAlert(String hubId, int stage) {
+        System.out.println("\n========================================================");
+        System.out.println("🚨 [PUBLIC ALERTBOT NOTIFICATION] 🚨");
+        System.out.println("Attention Travellers & Logistics Partners!");
+        System.out.println("Severe disruption reported at Hub: " + hubId);
+        System.out.println("Current Delay Stage: " + stage + " / 8");
+        System.out.println("Status: Significant transit delays expected. Please adjust routes.");
+        System.out.println("========================================================\n");
+    }
 }
 
 // MQ TODO (stretch goal): subscribes to ActiveMQ topic MqConfig.TOPIC at MqConfig.BROKER_URL (see co.wethinkcode.logisticsconnect.mq.MqConfig)
